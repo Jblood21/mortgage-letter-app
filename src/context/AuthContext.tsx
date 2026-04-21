@@ -22,6 +22,11 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Check if supabase client is available
+const isSupabaseAvailable = () => {
+  return supabase !== null && typeof supabase?.auth?.getSession === 'function';
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -31,6 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const loadUserData = useCallback(async (userId: string) => {
+    if (!isSupabaseAvailable()) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
     try {
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -63,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkSession = useCallback(async () => {
+    if (!isSupabaseAvailable()) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -77,6 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUserData]);
 
   useEffect(() => {
+    if (!isSupabaseAvailable()) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -100,6 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [checkSession, loadUserData]);
 
   const signIn = async (email: string, password: string): Promise<{ error?: string }> => {
+    if (!isSupabaseAvailable()) {
+      return { error: 'Database connection not available. Please configure Supabase credentials.' };
+    }
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
@@ -114,6 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     userData: Partial<User>
   ): Promise<{ error?: string }> => {
+    if (!isSupabaseAvailable()) {
+      return { error: 'Database connection not available. Please configure Supabase credentials.' };
+    }
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
       if (authError) return { error: authError.message };
@@ -131,10 +155,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    if (!isSupabaseAvailable()) return;
     await supabase.auth.signOut();
   };
 
   const updateUser = async (updates: Partial<User>): Promise<{ error?: string }> => {
+    if (!isSupabaseAvailable()) {
+      return { error: 'Database connection not available' };
+    }
     if (!state.user) return { error: 'Not authenticated' };
     try {
       const { error } = await supabase
@@ -153,6 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCompany = async (updates: Partial<Company>): Promise<{ error?: string }> => {
+    if (!isSupabaseAvailable()) {
+      return { error: 'Database connection not available' };
+    }
     if (!state.company) return { error: 'No company associated' };
     try {
       const { error } = await supabase
