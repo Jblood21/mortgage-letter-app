@@ -21,6 +21,14 @@ import {
   isValidPhone,
 } from '@/lib/utils';
 import { getTemplateByLoanType } from '@/lib/defaultTemplates';
+import { Download, X, AlertCircle } from 'lucide-react';
+import AriveImport from './AriveImport';
+
+interface AriveConfig {
+  apiKey: string;
+  companyId: string;
+  baseUrl: string;
+}
 
 interface LetterFormProps {
   existingLetter?: PreApprovalLetter;
@@ -59,6 +67,76 @@ export default function LetterForm({ existingLetter }: LetterFormProps) {
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasCoBorrower, setHasCoBorrower] = useState(false);
+  const [showAriveModal, setShowAriveModal] = useState(false);
+  const [ariveConfig, setAriveConfig] = useState<AriveConfig | null>(null);
+
+  // Check if Arive is configured
+  useEffect(() => {
+    const savedConfig = localStorage.getItem('ariveConfig');
+    if (savedConfig) {
+      try {
+        const parsed = JSON.parse(savedConfig);
+        if (parsed.apiKey && parsed.companyId) {
+          setAriveConfig(parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse Arive config:', e);
+      }
+    }
+  }, []);
+
+  // Handle Arive import
+  const handleAriveImport = (borrowerData: Record<string, unknown>, loanData: Record<string, unknown>) => {
+    // Populate borrower fields
+    if (borrowerData.firstName) {
+      setBorrower(prev => ({
+        ...prev,
+        firstName: String(borrowerData.firstName || ''),
+        lastName: String(borrowerData.lastName || ''),
+        email: String(borrowerData.email || ''),
+        phone: String(borrowerData.phone || ''),
+      }));
+    }
+
+    // Populate co-borrower if present
+    if (borrowerData.coBorrower && typeof borrowerData.coBorrower === 'object') {
+      const co = borrowerData.coBorrower as Record<string, unknown>;
+      if (co.firstName) {
+        setHasCoBorrower(true);
+        setCoBorrower({
+          ...emptyBorrower,
+          id: uuidv4(),
+          firstName: String(co.firstName || ''),
+          lastName: String(co.lastName || ''),
+          relationship: 'spouse',
+        });
+      }
+    }
+
+    // Populate loan fields
+    if (loanData.loanAmount) {
+      const amount = Number(loanData.purchasePrice || loanData.loanAmount);
+      setPurchasePrice(amount);
+    }
+    if (loanData.loanType) {
+      const loanType = String(loanData.loanType).toLowerCase();
+      setLoan(prev => ({
+        ...prev,
+        loanType: loanType as LoanInfo['loanType'],
+      }));
+    }
+    if (loanData.interestRate) {
+      setInterestRate(Number(loanData.interestRate));
+    }
+    if (loanData.downPaymentPercent) {
+      setLoan(prev => ({
+        ...prev,
+        downPaymentPercent: Number(loanData.downPaymentPercent),
+      }));
+    }
+
+    setShowAriveModal(false);
+  };
 
   // Borrower state
   const [borrower, setBorrower] = useState<Borrower>(
@@ -235,6 +313,56 @@ export default function LetterForm({ existingLetter }: LetterFormProps) {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Import from Arive Button */}
+      {ariveConfig && (
+        <div className="mb-6">
+          <button
+            onClick={() => setShowAriveModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-sm"
+          >
+            <Download className="w-5 h-5" />
+            Import from Arive
+          </button>
+        </div>
+      )}
+
+      {!ariveConfig && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-amber-800 font-medium">Arive Integration Not Configured</p>
+            <p className="text-sm text-amber-700 mt-1">
+              Configure your Arive API settings to import borrower data automatically.{' '}
+              <a href="/settings" className="underline hover:no-underline">Go to Settings</a>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Arive Import Modal */}
+      {showAriveModal && ariveConfig && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Import from Arive</h2>
+              <button
+                onClick={() => setShowAriveModal(false)}
+                className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(80vh-60px)]">
+              <AriveImport
+                companyId={ariveConfig.companyId}
+                userId="current-user"
+                onImport={handleAriveImport}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
