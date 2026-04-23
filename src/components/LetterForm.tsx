@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { useApp } from '@/context/AppContext';
@@ -11,6 +11,7 @@ import {
   LoanInfo,
   PreApprovalLetter,
   Address,
+  RealEstateAgentInfo,
 } from '@/types';
 import {
   generateId,
@@ -21,7 +22,7 @@ import {
   isValidPhone,
 } from '@/lib/utils';
 import { getTemplateByLoanType } from '@/lib/defaultTemplates';
-import { Download, X, AlertCircle } from 'lucide-react';
+import { Download, X, AlertCircle, Home, Upload, User, ChevronDown, ChevronUp } from 'lucide-react';
 import AriveImport from './AriveImport';
 
 interface AriveConfig {
@@ -147,6 +148,41 @@ export default function LetterForm({ existingLetter }: LetterFormProps) {
   const [coBorrower, setCoBorrower] = useState<CoBorrower | undefined>(
     existingLetter?.coBorrower
   );
+
+  // Real Estate Agent state (for dual branding)
+  const [hasAgent, setHasAgent] = useState(!!existingLetter?.realEstateAgent);
+  const [showAgentSection, setShowAgentSection] = useState(false);
+  const [realEstateAgent, setRealEstateAgent] = useState<RealEstateAgentInfo | undefined>(
+    existingLetter?.realEstateAgent
+  );
+  const [isUploadingAgentPhoto, setIsUploadingAgentPhoto] = useState(false);
+  const [isUploadingAgentLogo, setIsUploadingAgentLogo] = useState(false);
+  const agentPhotoRef = useRef<HTMLInputElement>(null);
+  const agentLogoRef = useRef<HTMLInputElement>(null);
+
+  const handleAgentPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !realEstateAgent) return;
+    setIsUploadingAgentPhoto(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setRealEstateAgent({ ...realEstateAgent, personalPhoto: reader.result as string });
+      setIsUploadingAgentPhoto(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAgentLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !realEstateAgent) return;
+    setIsUploadingAgentLogo(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setRealEstateAgent({ ...realEstateAgent, brokerageLogo: reader.result as string });
+      setIsUploadingAgentLogo(false);
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Property state
   const [property, setProperty] = useState<PropertyInfo>(
@@ -288,6 +324,7 @@ export default function LetterForm({ existingLetter }: LetterFormProps) {
       property,
       loan,
       loanOfficer: state.loanOfficer,
+      realEstateAgent: hasAgent ? realEstateAgent : undefined,
       letterContent: processTemplate(template.content, {
         borrower,
         coBorrower: hasCoBorrower ? coBorrower : undefined,
@@ -904,6 +941,242 @@ export default function LetterForm({ existingLetter }: LetterFormProps) {
                   </div>
                 </div>
               ))}
+          </div>
+
+          {/* Real Estate Agent Section (Dual Branding) */}
+          <div className="mt-8 border-t pt-6">
+            <button
+              type="button"
+              onClick={() => setShowAgentSection(!showAgentSection)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <Home className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-medium">Real Estate Agent Co-Branding</h3>
+                  <p className="text-sm text-slate-500">Add agent info for dual branding on the letter</p>
+                </div>
+              </div>
+              {showAgentSection ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
+
+            {showAgentSection && (
+              <div className="mt-6 space-y-6 bg-slate-50 rounded-xl p-6">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="hasAgent"
+                    checked={hasAgent}
+                    onChange={(e) => {
+                      setHasAgent(e.target.checked);
+                      if (e.target.checked && !realEstateAgent) {
+                        setRealEstateAgent({
+                          name: '',
+                          phone: '',
+                          email: '',
+                          brokerageName: '',
+                        });
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-slate-300"
+                  />
+                  <label htmlFor="hasAgent" className="text-sm font-medium">
+                    Include real estate agent on this letter
+                  </label>
+                </div>
+
+                {hasAgent && realEstateAgent && (
+                  <div className="space-y-4">
+                    {/* Agent Info Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Agent Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={realEstateAgent.name}
+                          onChange={(e) => setRealEstateAgent({ ...realEstateAgent, name: e.target.value })}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="Jane Doe"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Title
+                        </label>
+                        <input
+                          type="text"
+                          value={realEstateAgent.title || ''}
+                          onChange={(e) => setRealEstateAgent({ ...realEstateAgent, title: e.target.value })}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="REALTOR®"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Phone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={realEstateAgent.phone}
+                          onChange={(e) => setRealEstateAgent({ ...realEstateAgent, phone: e.target.value })}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="(555) 555-5555"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Email *
+                        </label>
+                        <input
+                          type="email"
+                          value={realEstateAgent.email}
+                          onChange={(e) => setRealEstateAgent({ ...realEstateAgent, email: e.target.value })}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="jane@realty.com"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          Brokerage Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={realEstateAgent.brokerageName}
+                          onChange={(e) => setRealEstateAgent({ ...realEstateAgent, brokerageName: e.target.value })}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="ABC Realty"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                          License Number
+                        </label>
+                        <input
+                          type="text"
+                          value={realEstateAgent.licenseNumber || ''}
+                          onChange={(e) => setRealEstateAgent({ ...realEstateAgent, licenseNumber: e.target.value })}
+                          className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                          placeholder="DRE# 12345678"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Agent Photos */}
+                    <div className="grid grid-cols-2 gap-6 pt-4 border-t">
+                      {/* Agent Photo */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Agent Photo
+                        </label>
+                        <div className="flex items-start gap-3">
+                          <div className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-full flex items-center justify-center bg-white overflow-hidden">
+                            {realEstateAgent.personalPhoto ? (
+                              <img
+                                src={realEstateAgent.personalPhoto}
+                                alt="Agent photo"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-8 h-8 text-slate-300" />
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="file"
+                              ref={agentPhotoRef}
+                              onChange={handleAgentPhotoUpload}
+                              accept="image/*"
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => agentPhotoRef.current?.click()}
+                              disabled={isUploadingAgentPhoto}
+                              className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center gap-2 text-sm"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              {isUploadingAgentPhoto ? 'Uploading...' : 'Upload'}
+                            </button>
+                            {realEstateAgent.personalPhoto && (
+                              <button
+                                type="button"
+                                onClick={() => setRealEstateAgent({ ...realEstateAgent, personalPhoto: '' })}
+                                className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+                              >
+                                <X className="w-3 h-3" />
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Brokerage Logo */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Brokerage Logo
+                        </label>
+                        <div className="flex items-start gap-3">
+                          <div className="w-20 h-20 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center bg-white overflow-hidden">
+                            {realEstateAgent.brokerageLogo ? (
+                              <img
+                                src={realEstateAgent.brokerageLogo}
+                                alt="Brokerage logo"
+                                className="w-full h-full object-contain p-1"
+                              />
+                            ) : (
+                              <Home className="w-8 h-8 text-slate-300" />
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="file"
+                              ref={agentLogoRef}
+                              onChange={handleAgentLogoUpload}
+                              accept="image/*"
+                              className="hidden"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => agentLogoRef.current?.click()}
+                              disabled={isUploadingAgentLogo}
+                              className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center gap-2 text-sm"
+                            >
+                              <Upload className="w-3.5 h-3.5" />
+                              {isUploadingAgentLogo ? 'Uploading...' : 'Upload'}
+                            </button>
+                            {realEstateAgent.brokerageLogo && (
+                              <button
+                                type="button"
+                                onClick={() => setRealEstateAgent({ ...realEstateAgent, brokerageLogo: '' })}
+                                className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+                              >
+                                <X className="w-3 h-3" />
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -394,11 +394,141 @@ export default function LetterView({ letter }: LetterViewProps) {
             <RichTextEditor value={editedContent} onChange={setEditedContent} />
           </div>
         ) : (
-          <div
-            ref={letterRef}
-            className="p-8 bg-white"
-            dangerouslySetInnerHTML={{ __html: letter.letterContent }}
-          />
+          <div ref={letterRef} className="bg-white">
+            {/* Letter Header with Branding */}
+            <div className="px-8 py-6 border-b-2 border-slate-200">
+              <div className="flex items-start justify-between">
+                {/* Left Side: Mortgage Company */}
+                <div className="flex items-center gap-4">
+                  {letter.loanOfficer.companyLogo ? (
+                    <img
+                      src={letter.loanOfficer.companyLogo}
+                      alt={letter.loanOfficer.companyName}
+                      className="h-16 w-auto object-contain"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">
+                        {letter.loanOfficer.companyName.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="font-bold text-lg text-slate-800">
+                      {letter.loanOfficer.companyName}
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      NMLS# {letter.loanOfficer.companyNmls}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Side: Loan Officer */}
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="font-semibold text-slate-800">{letter.loanOfficer.name}</p>
+                    <p className="text-sm text-slate-500">{letter.loanOfficer.title}</p>
+                    <p className="text-sm text-slate-500">NMLS# {letter.loanOfficer.nmls}</p>
+                    <p className="text-sm text-blue-600">{letter.loanOfficer.phone}</p>
+                  </div>
+                  {letter.loanOfficer.personalPhoto ? (
+                    <img
+                      src={letter.loanOfficer.personalPhoto}
+                      alt={letter.loanOfficer.name}
+                      className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
+                      <span className="text-slate-500 font-bold text-xl">
+                        {letter.loanOfficer.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Real Estate Agent Section (Dual Branding) */}
+              {letter.realEstateAgent && (
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">In Partnership With</p>
+                  <div className="flex items-start justify-between">
+                    {/* Left Side: Brokerage */}
+                    <div className="flex items-center gap-4">
+                      {letter.realEstateAgent.brokerageLogo ? (
+                        <img
+                          src={letter.realEstateAgent.brokerageLogo}
+                          alt={letter.realEstateAgent.brokerageName}
+                          className="h-14 w-auto object-contain"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 bg-emerald-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">
+                            {letter.realEstateAgent.brokerageName.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="font-semibold text-slate-700">
+                          {letter.realEstateAgent.brokerageName}
+                        </h3>
+                        {letter.realEstateAgent.brokeragePhone && (
+                          <p className="text-sm text-slate-500">{letter.realEstateAgent.brokeragePhone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right Side: Agent */}
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-700">{letter.realEstateAgent.name}</p>
+                        {letter.realEstateAgent.title && (
+                          <p className="text-sm text-slate-500">{letter.realEstateAgent.title}</p>
+                        )}
+                        {letter.realEstateAgent.licenseNumber && (
+                          <p className="text-sm text-slate-500">{letter.realEstateAgent.licenseNumber}</p>
+                        )}
+                        <p className="text-sm text-emerald-600">{letter.realEstateAgent.phone}</p>
+                      </div>
+                      {letter.realEstateAgent.personalPhoto ? (
+                        <img
+                          src={letter.realEstateAgent.personalPhoto}
+                          alt={letter.realEstateAgent.name}
+                          className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 bg-slate-200 rounded-full flex items-center justify-center">
+                          <span className="text-slate-500 font-bold text-lg">
+                            {letter.realEstateAgent.name.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Letter Body */}
+            <div
+              className="p-8"
+              dangerouslySetInnerHTML={{ __html: letter.letterContent }}
+            />
+
+            {/* Letter Footer with Contact Info */}
+            <div className="px-8 py-4 bg-slate-50 border-t text-center">
+              <div className="flex items-center justify-center gap-8 text-sm text-slate-600">
+                <span>{letter.loanOfficer.email}</span>
+                <span>{letter.loanOfficer.phone}</span>
+                {letter.realEstateAgent && (
+                  <>
+                    <span className="w-px h-4 bg-slate-300" />
+                    <span>{letter.realEstateAgent.email}</span>
+                    <span>{letter.realEstateAgent.phone}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 

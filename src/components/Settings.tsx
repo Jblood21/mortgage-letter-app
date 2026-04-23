@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { LoanOfficerInfo, Address } from '@/types';
 import { isValidEmail, isValidPhone } from '@/lib/utils';
+import { Upload, User, Building2, X, Camera } from 'lucide-react';
 
 const emptyAddress: Address = {
   street: '',
@@ -17,10 +18,48 @@ export default function Settings() {
   const [info, setInfo] = useState<LoanOfficerInfo>(state.loanOfficer);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setInfo(state.loanOfficer);
   }, [state.loanOfficer]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingLogo(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setInfo({ ...info, companyLogo: reader.result as string });
+        setIsUploadingLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingPhoto(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setInfo({ ...info, personalPhoto: reader.result as string });
+        setIsUploadingPhoto(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -239,6 +278,154 @@ export default function Settings() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Branding & Photos Section */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-6">Branding & Photos</h2>
+        <p className="text-slate-500 text-sm mb-6">
+          Add your company logo and personal photo to appear on pre-approval letters
+        </p>
+
+        <div className="grid grid-cols-2 gap-8">
+          {/* Company Logo */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Company Logo
+            </label>
+            <div className="flex items-start gap-4">
+              <div className="w-28 h-28 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center bg-slate-50 overflow-hidden">
+                {info.companyLogo ? (
+                  <img
+                    src={info.companyLogo}
+                    alt="Company logo"
+                    className="w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <Building2 className="w-10 h-10 text-slate-300" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  ref={logoInputRef}
+                  onChange={handleLogoUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={isUploadingLogo}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 flex items-center gap-2 text-sm"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isUploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                </button>
+                {info.companyLogo && (
+                  <button
+                    onClick={() => setInfo({ ...info, companyLogo: '' })}
+                    className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Remove
+                  </button>
+                )}
+                <p className="text-xs text-slate-500">
+                  PNG or JPG, recommended 200x200px
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Photo */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Personal Photo (Headshot)
+            </label>
+            <div className="flex items-start gap-4">
+              <div className="w-28 h-28 border-2 border-dashed border-slate-300 rounded-full flex items-center justify-center bg-slate-50 overflow-hidden">
+                {info.personalPhoto ? (
+                  <img
+                    src={info.personalPhoto}
+                    alt="Personal photo"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-10 h-10 text-slate-300" />
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  ref={photoInputRef}
+                  onChange={handlePhotoUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={isUploadingPhoto}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 flex items-center gap-2 text-sm"
+                >
+                  <Camera className="w-4 h-4" />
+                  {isUploadingPhoto ? 'Uploading...' : 'Upload Photo'}
+                </button>
+                {info.personalPhoto && (
+                  <button
+                    onClick={() => setInfo({ ...info, personalPhoto: '' })}
+                    className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" />
+                    Remove
+                  </button>
+                )}
+                <p className="text-xs text-slate-500">
+                  Professional headshot, square ratio
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Preview */}
+        {(info.companyLogo || info.personalPhoto) && (
+          <div className="mt-8 pt-6 border-t">
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Letter Header Preview
+            </label>
+            <div className="border rounded-lg p-6 bg-slate-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {info.companyLogo && (
+                    <img
+                      src={info.companyLogo}
+                      alt="Company logo"
+                      className="h-16 w-auto object-contain"
+                    />
+                  )}
+                  <div>
+                    <p className="font-semibold text-lg">{info.companyName || 'Your Company'}</p>
+                    <p className="text-sm text-slate-500">NMLS# {info.companyNmls || '000000'}</p>
+                  </div>
+                </div>
+                {info.personalPhoto && (
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="font-medium">{info.name || 'Loan Officer'}</p>
+                      <p className="text-sm text-slate-500">{info.title || 'Loan Officer'}</p>
+                      <p className="text-sm text-slate-500">NMLS# {info.nmls || '000000'}</p>
+                    </div>
+                    <img
+                      src={info.personalPhoto}
+                      alt="Personal photo"
+                      className="w-16 h-16 rounded-full object-cover border-2 border-white shadow"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">

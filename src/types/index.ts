@@ -79,6 +79,19 @@ export interface LoanOfficerInfo {
   companyAddress?: Address;
   companyPhone?: string;
   companyLogo?: string;
+  personalPhoto?: string;
+}
+
+export interface RealEstateAgentInfo {
+  name: string;
+  title?: string;
+  licenseNumber?: string;
+  phone: string;
+  email: string;
+  brokerageName: string;
+  brokeragePhone?: string;
+  brokerageLogo?: string;
+  personalPhoto?: string;
 }
 
 export interface PreApprovalLetter {
@@ -92,6 +105,7 @@ export interface PreApprovalLetter {
   property: PropertyInfo;
   loan: LoanInfo;
   loanOfficer: LoanOfficerInfo;
+  realEstateAgent?: RealEstateAgentInfo;
   letterContent: string;
   notes?: string;
   conditions?: string[];
