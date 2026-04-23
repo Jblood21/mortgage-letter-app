@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { formatCurrency, getDaysUntilExpiration, formatShortDate } from '@/lib/utils';
 import { PreApprovalLetter } from '@/types';
+import ExpirationAlerts from './ExpirationAlerts';
 
 export default function Dashboard() {
   const { state } = useApp();
@@ -71,6 +72,9 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Expiration Alerts */}
+      <ExpirationAlerts />
+
       {/* Stats Cards */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-5">
@@ -133,15 +137,26 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Recent Letters</h2>
-        <Link
-          href="/new-letter"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          New Letter
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/batch-letters"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Batch Generate
+          </Link>
+          <Link
+            href="/new-letter"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Letter
+          </Link>
+        </div>
       </div>
 
       {/* Letters Table */}

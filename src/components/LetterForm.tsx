@@ -865,6 +865,12 @@ export default function LetterForm({ existingLetter }: LetterFormProps) {
                 (t) =>
                   t.loanType === 'all' || t.loanType === loan.loanType
               )
+              .sort((a, b) => {
+                // Sort matching loan type templates first (recommended)
+                if (a.loanType === loan.loanType && b.loanType !== loan.loanType) return -1;
+                if (b.loanType === loan.loanType && a.loanType !== loan.loanType) return 1;
+                return 0;
+              })
               .map((template) => (
                 <div
                   key={template.id}
@@ -872,17 +878,26 @@ export default function LetterForm({ existingLetter }: LetterFormProps) {
                   className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                     selectedTemplateId === template.id
                       ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-200 hover:border-slate-300'
+                      : template.loanType === loan.loanType
+                        ? 'border-green-300 bg-green-50/50 hover:border-green-400'
+                        : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <h3 className="font-medium mb-1">{template.name}</h3>
+                  <div className="flex items-start justify-between">
+                    <h3 className="font-medium mb-1">{template.name}</h3>
+                    {template.loanType === loan.loanType && (
+                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full flex-shrink-0">
+                        Recommended
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-slate-500">{template.description}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-xs bg-slate-100 px-2 py-1 rounded">
                       {template.loanType === 'all' ? 'All Types' : template.loanType.toUpperCase()}
                     </span>
                     {template.isDefault && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                         Default
                       </span>
                     )}

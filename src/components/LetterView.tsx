@@ -8,6 +8,7 @@ import { useApp } from '@/context/AppContext';
 import { PreApprovalLetter } from '@/types';
 import { formatDate, formatCurrency, getDaysUntilExpiration } from '@/lib/utils';
 import RichTextEditor from './RichTextEditor';
+import { Mail, Upload, Link2, Loader2, CheckCircle, Copy } from 'lucide-react';
 
 interface LetterViewProps {
   letter: PreApprovalLetter;
@@ -22,6 +23,13 @@ export default function LetterView({ letter }: LetterViewProps) {
   const [editedContent, setEditedContent] = useState(letter.letterContent);
   const [isExporting, setIsExporting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isUploadingToArive, setIsUploadingToArive] = useState(false);
+  const [showEmailSuccess, setShowEmailSuccess] = useState(false);
+  const [showUploadSuccess, setShowUploadSuccess] = useState(false);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [showPortalModal, setShowPortalModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const daysUntilExpiration = getDaysUntilExpiration(letter.loan.expirationDate);
   const isExpired = daysUntilExpiration < 0;
@@ -127,6 +135,93 @@ export default function LetterView({ letter }: LetterViewProps) {
       status: newStatus,
       updatedAt: new Date().toISOString(),
     });
+  };
+
+  // Send email to borrower
+  const handleSendEmail = async () => {
+    setIsSendingEmail(true);
+    try {
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: letter.borrower.email,
+          subject: `Your Pre-Approval Letter - ${formatCurrency(letter.loan.preApprovalAmount)}`,
+          letterContent: letter.letterContent,
+          borrowerName: `${letter.borrower.firstName} ${letter.borrower.lastName}`,
+          loanOfficerName: letter.loanOfficer.name,
+          loanOfficerPhone: letter.loanOfficer.phone,
+          loanOfficerEmail: letter.loanOfficer.email,
+        }),
+      });
+
+      if (response.ok) {
+        setShowEmailSuccess(true);
+        setTimeout(() => setShowEmailSuccess(false), 3000);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to send email');
+      }
+    } catch (_error) {
+      alert('Failed to send email. Please try again.');
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  // Upload letter to Arive
+  const handleUploadToArive = async () => {
+    const ariveConfig = localStorage.getItem('ariveConfig');
+    if (!ariveConfig) {
+      alert('Please configure Arive integration in Settings first.');
+      return;
+    }
+
+    setIsUploadingToArive(true);
+    try {
+      const config = JSON.parse(ariveConfig);
+      const response = await fetch('/api/arive/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: config.apiKey,
+          companyId: config.companyId,
+          baseUrl: config.baseUrl,
+          letterId: letter.id,
+          borrowerEmail: letter.borrower.email,
+          letterContent: letter.letterContent,
+        }),
+      });
+
+      if (response.ok) {
+        setShowUploadSuccess(true);
+        setTimeout(() => setShowUploadSuccess(false), 3000);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to upload to Arive');
+      }
+    } catch (_error) {
+      alert('Failed to upload to Arive. Please try again.');
+    } finally {
+      setIsUploadingToArive(false);
+    }
+  };
+
+  // Generate borrower portal link
+  const handleGeneratePortalLink = () => {
+    const token = btoa(`${letter.id}-${Date.now()}`);
+    const baseUrl = window.location.origin;
+    const link = `${baseUrl}/portal/${token}`;
+    setPortalLink(link);
+    setShowPortalModal(true);
+  };
+
+  const handleCopyLink = async () => {
+    if (portalLink) {
+      await navigator.clipboard.writeText(portalLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   };
 
   return (
@@ -236,6 +331,47 @@ export default function LetterView({ letter }: LetterViewProps) {
                 </svg>
                 Duplicate
               </button>
+
+              {/* Quick Actions */}
+              <div className="h-6 w-px bg-slate-300 mx-2" />
+
+              <button
+                onClick={handleSendEmail}
+                disabled={isSendingEmail}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSendingEmail ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : showEmailSuccess ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : (
+                  <Mail className="w-4 h-4" />
+                )}
+                {showEmailSuccess ? 'Sent!' : 'Email'}
+              </button>
+
+              <button
+                onClick={handleUploadToArive}
+                disabled={isUploadingToArive}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-50"
+              >
+                {isUploadingToArive ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : showUploadSuccess ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+                {showUploadSuccess ? 'Uploaded!' : 'Upload'}
+              </button>
+
+              <button
+                onClick={handleGeneratePortalLink}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
+              >
+                <Link2 className="w-4 h-4" />
+                Share Link
+              </button>
               <div className="flex-1" />
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -265,6 +401,62 @@ export default function LetterView({ letter }: LetterViewProps) {
           />
         )}
       </div>
+
+      {/* Portal Link Modal */}
+      {showPortalModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <Link2 className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Borrower Portal Link</h3>
+                <p className="text-sm text-slate-500">Share this link with your borrower</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-3 mb-4 flex items-center gap-2">
+              <input
+                type="text"
+                value={portalLink || ''}
+                readOnly
+                className="flex-1 bg-transparent text-sm text-slate-700 outline-none"
+              />
+              <button
+                onClick={handleCopyLink}
+                className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded"
+              >
+                {linkCopied ? (
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                ) : (
+                  <Copy className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 mb-4">
+              This link gives the borrower access to view and download their pre-approval letter.
+              The link will remain active for 30 days.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowPortalModal(false)}
+                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+              >
+                Close
+              </button>
+              <button
+                onClick={handleCopyLink}
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
+              >
+                {linkCopied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
